@@ -1,4 +1,4 @@
-# Roosterize
+# Roosterize VSCoq Plugin
 
 Roosterize is a tool for suggesting lemma names in verification
 projects that use the [Coq proof assistant](https://coq.inria.fr).

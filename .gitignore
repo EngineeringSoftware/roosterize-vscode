@@ -1,3 +1,9 @@
+# Temp files
+*~
+\#*\#
+.DS_Store
+
+
 # Log file
 experiments.log
 

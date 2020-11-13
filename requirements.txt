@@ -1,7 +1,8 @@
-configargparse
-nltk
+configargparse~=1.2.3
+nltk~=3.5
 future
-seutil==0.4.12
+seutil>=0.5.1
 six
+torch==1.1.0
 torchtext==0.4.0
-tqdm==4.30.*
+tqdm~=4.30.*

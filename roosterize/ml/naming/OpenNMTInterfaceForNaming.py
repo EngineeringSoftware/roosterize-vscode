@@ -171,7 +171,7 @@ class OpenNMTInterfaceForNaming(NamingModelBase[ONMTILNConfig]):
             if (module_name.startswith("onmt.") or module_name == "onmt") and module_name != "onmt.utils.logging":  sys.modules.pop(module_name)
         # end for
 
-        if not torch.cuda.is_available():  self.logger.warning("Cuda is not available")
+        if not torch.cuda.is_available():  self.logger.info("Cuda is not available")
         self.device_tag = "cuda:0" if torch.cuda.is_available() else "cpu"
         self.device = torch.device(self.device_tag)
 

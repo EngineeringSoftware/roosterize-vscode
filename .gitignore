@@ -12,6 +12,9 @@ experiments.log
 /models
 /models.tgz
 
+# Output files
+/output
+
 ### JetBrains
 /.idea/
 

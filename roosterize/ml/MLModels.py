@@ -1,16 +1,15 @@
-from typing import *
-
 from pathlib import Path
+from typing import Dict, get_type_hints, Set
+
 import recordclass
 from recordclass import RecordClass
-
-from seutil import LoggingUtils, IOUtils
+from seutil import IOUtils, LoggingUtils
 
 from roosterize.data.ModelSpec import ModelSpec
-from roosterize.ml.naming.OpenNMTInterfaceForNaming import OpenNMTInterfaceForNaming, ONMTILNConfig
-from roosterize.ml.naming.OpenNMTMultiSourceForNaming import OpenNMTMultiSourceForNaming, ONMTMSLNConfig
 from roosterize.ml.MLModelBase import MLModelBase
 from roosterize.ml.MLModelsConsts import MLModelsConsts
+from roosterize.ml.naming.OpenNMTInterfaceForNaming import ONMTILNConfig, OpenNMTInterfaceForNaming
+from roosterize.ml.naming.OpenNMTMultiSourceForNaming import ONMTMSLNConfig, OpenNMTMultiSourceForNaming
 
 
 class MLModels:
@@ -37,8 +36,6 @@ class MLModels:
                 model_spec.load_config()
             except (ValueError, FileNotFoundError):
                 pass
-            # end try
-        # end if
 
         return ml_model_clz.clz(model_spec)
 
@@ -50,7 +47,7 @@ class MLModels:
 
         type_hints = get_type_hints(ml_model_clz.config_clz)
 
-        model_path = path/name
+        model_path = path / name
         model_path.mkdir(parents=True, exist_ok=True)
 
         cls.logger.info(f"Possible attrs and default values: {config.__dict__}")
@@ -66,19 +63,16 @@ class MLModels:
                 if type_hints[k] == bool:
                     attrs_choices[k] = [v == "True" for v in str(options[k]).split()]
                 elif issubclass(type_hints[k], recordclass.mutabletuple):
-                    attrs_choices[k] = [IOUtils.dejsonfy(v, type_hints[k]) if v != "None" else None for v in str(options[k]).split()]
+                    attrs_choices[k] = [IOUtils.dejsonfy(v, type_hints[k]) if v != "None" else None for v in
+                                        str(options[k]).split()]
                 else:
                     attrs_choices[k] = [type_hints[k](v) for v in str(options[k]).split()]
-                # end if
                 attrs_choices[k] = list(set(attrs_choices[k]))
                 cls.logger.debug(f"attr {k}, choices: {attrs_choices[k]}")
                 options.pop(k)
-            # end if
-        # end for
 
         if len(options) > 0:
             cls.logger.warning(f"These options are not recognized: {options.keys()}")
-        # end if
 
         candidate = [0] * len(attrs_choices)
         is_explore_finished = False
@@ -86,21 +80,18 @@ class MLModels:
             # Generate current candidate
             for i, attr in enumerate(attrs):
                 config.__setattr__(attr, attrs_choices[attr][candidate[i]])
-            # end for
             if config.repOk():
                 # Adjust batch size
                 adjust_batch_size_func = getattr(config, "adjust_batch_size", None)
                 if callable(adjust_batch_size_func):
                     adjust_batch_size_func()
-                # end if
 
-                config_file = model_path / (str(config)+".json")
+                config_file = model_path / (str(config) + ".json")
                 cls.logger.info(f"Saving candidate to {config_file}: {config}")
                 config_files.add(name + "/" + str(config) + ".json")
                 IOUtils.dump(config_file, IOUtils.jsonfy(config), IOUtils.Format.jsonPretty)
             else:
                 cls.logger.info(f"Skipping invalid candidate: {config}")
-            # end if
 
             # To next candidate
             for i, attr in enumerate(attrs):
@@ -112,18 +103,14 @@ class MLModels:
                         break
                     else:
                         continue
-                    # end if
                 else:
                     break
-                # end if
-            # end for
-            if is_explore_finished:  break
-        # end while
+            if is_explore_finished:
+                break
 
         for config_file in config_files:
             print(f"- model: {name}")
             print(f"  config-file: {config_file}")
             print()
-        # end for
 
         return

@@ -1,35 +1,24 @@
 from pathlib import Path
-from typing import Dict, get_type_hints, Set
+from typing import get_type_hints, Set
 
 import recordclass
-from recordclass import RecordClass
 from seutil import IOUtils, LoggingUtils
 
 from roosterize.data.ModelSpec import ModelSpec
 from roosterize.ml.MLModelBase import MLModelBase
-from roosterize.ml.MLModelsConsts import MLModelsConsts
-from roosterize.ml.naming.OpenNMTInterfaceForNaming import ONMTILNConfig, OpenNMTInterfaceForNaming
-from roosterize.ml.naming.OpenNMTMultiSourceForNaming import ONMTMSLNConfig, OpenNMTMultiSourceForNaming
+from roosterize.ml.naming import get_model_cls, get_model_config_cls
+
+logger = LoggingUtils.get_logger(__name__)
 
 
 class MLModels:
-    logger = LoggingUtils.get_logger(__name__)
-
-    class MLModelClz(RecordClass):
-        clz: type = None
-        config_clz: type = None
-
-    NAMES_MODELS: Dict[str, MLModelClz] = {
-        MLModelsConsts.M_LN_ONMTI: MLModelClz(clz=OpenNMTInterfaceForNaming, config_clz=ONMTILNConfig),
-        MLModelsConsts.M_LN_ONMTMS: MLModelClz(clz=OpenNMTMultiSourceForNaming, config_clz=ONMTMSLNConfig),
-    }
 
     @classmethod
     def get_model(cls,
             model_spec: ModelSpec,
             is_eval: bool = False,
     ) -> "MLModelBase":
-        ml_model_clz: MLModels.MLModelClz = cls.NAMES_MODELS[model_spec.model]
+        model_cls = get_model_cls(model_spec.model)
 
         if not is_eval:
             try:
@@ -37,20 +26,21 @@ class MLModels:
             except (ValueError, FileNotFoundError):
                 pass
 
-        return ml_model_clz.clz(model_spec)
+        return model_cls(model_spec)
 
     @classmethod
     def generate_configs(cls, name: str, path: Path, **options):
         config_files: Set[str] = set()
-        ml_model_clz = cls.NAMES_MODELS[name]
-        config = ml_model_clz.config_clz()
+        model_cls = get_model_cls(name)
+        model_config_cls = get_model_config_cls(model_cls)
+        config = model_config_cls()
 
-        type_hints = get_type_hints(ml_model_clz.config_clz)
+        type_hints = get_type_hints(model_config_cls)
 
         model_path = path / name
         model_path.mkdir(parents=True, exist_ok=True)
 
-        cls.logger.info(f"Possible attrs and default values: {config.__dict__}")
+        logger.info(f"Possible attrs and default values: {config.__dict__}")
 
         attrs_choices: dict = dict()
         attrs: list = list()
@@ -68,11 +58,11 @@ class MLModels:
                 else:
                     attrs_choices[k] = [type_hints[k](v) for v in str(options[k]).split()]
                 attrs_choices[k] = list(set(attrs_choices[k]))
-                cls.logger.debug(f"attr {k}, choices: {attrs_choices[k]}")
+                logger.debug(f"attr {k}, choices: {attrs_choices[k]}")
                 options.pop(k)
 
         if len(options) > 0:
-            cls.logger.warning(f"These options are not recognized: {options.keys()}")
+            logger.warning(f"These options are not recognized: {options.keys()}")
 
         candidate = [0] * len(attrs_choices)
         is_explore_finished = False
@@ -87,11 +77,11 @@ class MLModels:
                     adjust_batch_size_func()
 
                 config_file = model_path / (str(config) + ".json")
-                cls.logger.info(f"Saving candidate to {config_file}: {config}")
+                logger.info(f"Saving candidate to {config_file}: {config}")
                 config_files.add(name + "/" + str(config) + ".json")
                 IOUtils.dump(config_file, IOUtils.jsonfy(config), IOUtils.Format.jsonPretty)
             else:
-                cls.logger.info(f"Skipping invalid candidate: {config}")
+                logger.info(f"Skipping invalid candidate: {config}")
 
             # To next candidate
             for i, attr in enumerate(attrs):

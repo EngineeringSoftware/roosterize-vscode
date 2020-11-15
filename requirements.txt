@@ -1,5 +1,6 @@
 configargparse~=1.2.3
 nltk~=3.5
+numpy~=1.19.2
 future
 seutil>=0.5.1
 six

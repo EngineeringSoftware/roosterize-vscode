@@ -23,7 +23,7 @@ setuptools.setup(
         "nltk~=3.5",
         "numpy~=1.19.2",
         "future",
-        "seutil>=0.5.1",
+        "seutil>=0.5.3",
         "six",
         "torch==1.1.0",
         "torchtext==0.4.0",

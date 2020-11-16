@@ -12,7 +12,7 @@ from roosterize.Utils import Utils
 
 
 # Check seutil version
-EXPECTED_SEUTIL_VERSION = "0.4.12"
+EXPECTED_SEUTIL_VERSION = "0.5.3"
 if pkg_resources.get_distribution("seutil").version < EXPECTED_SEUTIL_VERSION:
     print(f"seutil version does not meet expectation! Expected version: {EXPECTED_SEUTIL_VERSION}, current installed version: {pkg_resources.get_distribution('seutil').version}", file=sys.stderr)
     print(f"Hint: either upgrade seutil, or modify the expected version (after confirmation that the version will work)", file=sys.stderr)
@@ -144,6 +144,25 @@ def suggest_lemmas(**options):
     print(">>>>> Suggestions:")
     print(IOUtils.load(output_dir/"eval-result"/"suggestions.txt", IOUtils.Format.txt))
     return
+
+# User interfaces
+
+def process_file(**options):
+    from roosterize.ProjectManager import ProjectManager
+    file = options["file"]
+    roosterize_dir = options.get("roosterize_dir", ProjectManager.auto_infer_roosterize_dir(Path(file)))
+    pass
+
+
+def suggest_name_file(**options):
+    from roosterize.ProjectManager import ProjectManager
+    file = options["file"]
+    roosterize_dir = options.get("roosterize_dir", ProjectManager.auto_infer_roosterize_dir(Path(file)))
+
+
+def active_train_model_project(**options):
+    from roosterize.ProjectManager import ProjectManager
+    roosterize_dir = options.get("roosterize_dir", ProjectManager.auto_infer_roosterize_dir())
 
 
 def help(**options):

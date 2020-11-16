@@ -1,8 +1,8 @@
 
-all: bdist
+all: package
 
-bdist: clean
-	python setup.py bdist_rpm
+package: clean
+	pyinstaller roosterize/main.py
 
 clean:
-	-rm -rf dist/ build/ roosterize.egg-info/
+	-rm -rf dist/ build/

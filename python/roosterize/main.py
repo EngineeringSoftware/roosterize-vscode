@@ -1,24 +1,13 @@
-from pathlib import Path
-import pkg_resources
 import random
 import sys
 import time
+from pathlib import Path
 
-from seutil import LoggingUtils, CliUtils, IOUtils
+from seutil import CliUtils, IOUtils, LoggingUtils
 
-from roosterize.Macros import Macros
 from roosterize.Environment import Environment
+from roosterize.Macros import Macros
 from roosterize.Utils import Utils
-
-
-# Check seutil version
-EXPECTED_SEUTIL_VERSION = "0.5.3"
-if pkg_resources.get_distribution("seutil").version < EXPECTED_SEUTIL_VERSION:
-    print(f"seutil version does not meet expectation! Expected version: {EXPECTED_SEUTIL_VERSION}, current installed version: {pkg_resources.get_distribution('seutil').version}", file=sys.stderr)
-    print(f"Hint: either upgrade seutil, or modify the expected version (after confirmation that the version will work)", file=sys.stderr)
-    sys.exit(-1)
-# end if
-
 
 logging_file = Macros.this_dir.parent / "experiment.log"
 LoggingUtils.setup(filename=str(logging_file))

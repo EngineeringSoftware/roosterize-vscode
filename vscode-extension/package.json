@@ -1,0 +1,55 @@
+{
+    "name": "roosterize-vscode",
+    "displayName": "Roosterize",
+    "description": "Roosterize",
+    "version": "0.0.1",
+    "publisher": "EngineeringSoftware",
+    "repository": "https://github.com/EngineeringSoftware/roosterize-vscoq",
+    "engines": {
+        "vscode": "^1.34.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onCommand:extension.roosterize.config",
+        "onCommand:extension.roosterize.suggest_naming",
+        "onCommand:extension.roosterize.download_model",
+        "onCommand:extension.roosterize.improve_model"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "extension.roosterize.config",
+                "title": "Roosterize: config"
+            },
+            {
+                "command": "extension.roosterize.suggest_name",
+                "title": "Roosterize: suggest naming"
+            },
+            {
+                "command": "extension.roosterize.download_model",
+                "title": "Roosterize: download model"
+            },
+            {
+                "command": "extension.roosterize.improve_model",
+                "title": "Roosterize: improve project-specific model"
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "lint": "eslint . --ext .ts,.tsx",
+        "watch": "tsc -watch -p ./"
+    },
+    "devDependencies": {
+        "@types/node": "^12.12.0",
+        "@types/vscode": "^1.34.0",
+        "@typescript-eslint/eslint-plugin": "^3.0.2",
+        "@typescript-eslint/parser": "^3.0.2",
+        "eslint": "^7.1.0",
+        "typescript": "^4.0.2"
+    }
+}

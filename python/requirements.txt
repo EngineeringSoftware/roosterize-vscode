@@ -1,7 +1,8 @@
 configargparse~=1.2.3
+future
 nltk~=3.5
 numpy~=1.19.2
-future
+pygls~=0.9.1
 seutil>=0.5.3
 six
 torch==1.1.0

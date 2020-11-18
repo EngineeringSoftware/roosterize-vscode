@@ -154,6 +154,11 @@ def active_train_model_project(**options):
     roosterize_dir = options.get("roosterize_dir", ProjectManager.auto_infer_roosterize_dir())
 
 
+def vscode_server(**options):
+    from roosterize.VSCodeInterface import start_server
+    start_server(**options)
+
+
 def help(**options):
     print("""Usage: python -m roosterize.main ACTION OPTIONS
 Below is a list of supported actions and options.

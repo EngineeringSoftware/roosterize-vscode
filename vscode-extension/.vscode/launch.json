@@ -15,5 +15,8 @@
             "${workspaceFolder}/out/**/*.js"
         ],
         "preLaunchTask": "npm: watch",
+        "env": {
+            "VSCODE_DEBUG_MODE": "true"
+        }
     }]
 }

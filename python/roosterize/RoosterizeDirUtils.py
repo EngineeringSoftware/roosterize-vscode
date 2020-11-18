@@ -4,16 +4,13 @@ from pathlib import Path
 from seutil import IOUtils
 
 
-class ProjectManager:
+class RoosterizeDirUtils:
     """
-    Utility functions to manage .roosterize directory under a project.
+    Utility functions to manage .roosterize directories.
     """
-
-    def __init__(self, roosterize_dir: Path):
-        self.roosterize_dir = roosterize_dir
 
     @classmethod
-    def auto_infer_roosterize_dir(self, optional_file: Optional[Path] = None) -> Path:
+    def auto_infer_project_root(cls, optional_file: Optional[Path] = None) -> Path:
         """
         Automatically infers the appropriate .roosterize directory for the project, which
         should locate in the same directory as _CoqProject does. If a file is provided,
@@ -42,21 +39,16 @@ class ProjectManager:
                 curp = curp.parent
                 continue
 
-        return curp / ".roosterize"
+        return curp
 
-    def get_processed_files_dir(self):
-        return self.roosterize_dir / "files"
+    @classmethod
+    def get_local_cache_dir(cls, prj_root: Path):
+        return prj_root / ".roosterize" / "files"
 
-    def get_model_dir(self):
-        return self.roosterize_dir / "models"
+    @classmethod
+    def get_local_model_dir(cls, prj_root: Path):
+        return prj_root / ".roosterize" / "model"
 
-    def get_project_dir(self):
-        return self.roosterize_dir.parent
-
-    def get_config_path(self):
-        return self.roosterize_dir / "config.yml"
-
-    def update_config(self, new_config):
-        config = IOUtils.load(self.get_config_path(), IOUtils.Format.yaml)
-        config.update(new_config)
-        IOUtils.dump(self.get_config_path(), config, IOUtils.Format.yaml)
+    @classmethod
+    def get_global_model_dir(cls):
+        return Path.home() / ".roosterize" / "model"

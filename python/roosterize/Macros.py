@@ -10,6 +10,8 @@ class Macros:
     debug_dir: Path = project_dir / "debug"
     downloads_dir: Path = project_dir / "_downloads"
 
+    model_url = "https://github.com/TODO"
+
     DS_GROUP_T1 = "t1"
     DS_GROUP_T2 = "t2"
     DS_GROUP_T3 = "t3"

@@ -134,24 +134,32 @@ def suggest_lemmas(**options):
     print(IOUtils.load(output_dir/"eval-result"/"suggestions.txt", IOUtils.Format.txt))
     return
 
+
 # User interfaces
 
+def download_global_model(**options):
+    from roosterize.UserInterface import UserInterface
+    ui = UserInterface()
+    force_yes = Utils.get_option_as_boolean(options, "y")
+    ui.download_global_model(force_yes)
+
+
 def process_file(**options):
-    from roosterize.ProjectManager import ProjectManager
+    from roosterize.RoosterizeDirUtils import RoosterizeDirUtils
     file = options["file"]
-    roosterize_dir = options.get("roosterize_dir", ProjectManager.auto_infer_roosterize_dir(Path(file)))
+    roosterize_dir = options.get("roosterize_dir", RoosterizeDirUtils.auto_infer_project_root(Path(file)))
     pass
 
 
 def suggest_name_file(**options):
-    from roosterize.ProjectManager import ProjectManager
+    from roosterize.RoosterizeDirUtils import RoosterizeDirUtils
     file = options["file"]
-    roosterize_dir = options.get("roosterize_dir", ProjectManager.auto_infer_roosterize_dir(Path(file)))
+    roosterize_dir = options.get("roosterize_dir", RoosterizeDirUtils.auto_infer_project_root(Path(file)))
 
 
 def active_train_model_project(**options):
-    from roosterize.ProjectManager import ProjectManager
-    roosterize_dir = options.get("roosterize_dir", ProjectManager.auto_infer_roosterize_dir())
+    from roosterize.RoosterizeDirUtils import RoosterizeDirUtils
+    roosterize_dir = options.get("roosterize_dir", RoosterizeDirUtils.auto_infer_project_root())
 
 
 def vscode_server(**options):

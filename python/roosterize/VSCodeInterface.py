@@ -1,4 +1,9 @@
+from pathlib import Path
+
 from pygls.server import LanguageServer
+
+from roosterize.RoosterizeDirUtils import RoosterizeDirUtils
+from roosterize.UserInterface import UserInterface
 
 from roosterize.Utils import Utils
 
@@ -15,6 +20,7 @@ class RoosterizeLanguageServer(LanguageServer):
 
 
 roosterize_server = RoosterizeLanguageServer()
+ui = UserInterface()
 
 
 @roosterize_server.command(RoosterizeLanguageServer.CMD_SUGGEST_NAMING)
@@ -25,6 +31,8 @@ def suggest_naming(ls, *args):
 @roosterize_server.command(RoosterizeLanguageServer.CMD_DOWNLOAD_MODEL)
 def download_model(ls, *args):
     ls.show_message(f"From server! download_model args: {args}")
+    # TODO: allow back-and-forth UI here
+    ui.download_global_model(force_yes=True)
 
 
 @roosterize_server.command(RoosterizeLanguageServer.CMD_IMPROVE_MODEL)

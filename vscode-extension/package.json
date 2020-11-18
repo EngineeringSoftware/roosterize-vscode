@@ -18,11 +18,7 @@
     "contributes": {
         "commands": [
             {
-                "command": "extension.roosterize.config",
-                "title": "Roosterize: config"
-            },
-            {
-                "command": "extension.roosterize.suggest_name",
+                "command": "extension.roosterize.suggest_naming",
                 "title": "Roosterize: suggest naming"
             },
             {

@@ -1,4 +1,10 @@
+import traceback
+import urllib
+import urllib.parse
+from pathlib import Path
+
 from pygls.server import LanguageServer
+from pygls.types import MessageType
 
 from roosterize.interface.VSCodeInterface import VSCodeInterface
 from roosterize.Utils import Utils
@@ -19,20 +25,43 @@ roosterize_server = RoosterizeLanguageServer()
 ui = VSCodeInterface()
 
 
+@roosterize_server.thread()
 @roosterize_server.command(RoosterizeLanguageServer.CMD_SUGGEST_NAMING)
-def suggest_naming(ls, *args):
-    ls.show_message(f"From server! suggest_naming args: {args}")
+def suggest_naming(ls: LanguageServer, *args):
+    ui.set_language_server(ls)
+    ls.show_message("Suggesting naming...")
+
+    paths = []
+    for d in ls.workspace.documents:
+        p = Path(urllib.parse.unquote_plus(urllib.parse.urlparse(d).path))
+        if p.suffix != ".v":
+            continue
+        paths.append(p)
+
+    if len(paths) == 0:
+        ls.show_message("Please open at least one .v file!", MessageType.Error)
+
+    for p in paths:
+        try:
+            ui.suggest_naming(p)
+        except:
+            ls.show_message_log(traceback.format_exc())
+            raise
 
 
 @roosterize_server.thread()
 @roosterize_server.command(RoosterizeLanguageServer.CMD_DOWNLOAD_MODEL)
-def download_model(ls, *args):
+def download_global_model(ls: LanguageServer, *args):
     ui.set_language_server(ls)
-    ui.download_global_model()
+    try:
+        ui.download_global_model()
+    except:
+        ls.show_message_log(traceback.format_exc())
+        raise
 
 
 @roosterize_server.command(RoosterizeLanguageServer.CMD_IMPROVE_MODEL)
-def improve_model(ls, *args):
+def improve_project_model(ls: LanguageServer, *args):
     ls.show_message(f"From server! improve_model args: {args}")
 
 
@@ -45,41 +74,3 @@ def start_server(**options):
         roosterize_server.start_tcp(host, port)
     else:
         roosterize_server.start_io()
-#
-# class VSCodeInterface:
-#     """
-#     Interfaces to the VSCode plugin.
-#     """
-#
-#     roosterize_server = RoosterizeLanguageServer()
-#
-#     # The port number used for debugging (when the server is started manually)
-#     DEBUG_PORT = 20145
-#
-#     def __init__(self, **options):
-#         # self.proj_mgr = proj_mgr
-#         print(options)
-#
-#     def start(self):
-#         server = LanguageServer()
-#         server.start_tcp("localhost", self.DEBUG_PORT)
-#
-#     @self.roosterize_server
-#     def download_model(self):
-#         model_dir = self.proj_mgr.get_model_dir()
-#         IOUtils.mk_dir(model_dir)
-#
-#         # TODO: Download model from a default URL to model_dir
-#         pass
-#
-#     def suggest_name(self, file: Path):
-#         self.require_processed_file(file)
-#         pass
-#
-#     def process_file(self, file: Path):
-#         # TODO async
-#         pass
-#
-#     def require_processed_file(self, file: Path):
-#         # TODO non async
-#         pass

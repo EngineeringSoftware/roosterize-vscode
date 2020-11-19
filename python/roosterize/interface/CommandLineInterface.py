@@ -24,6 +24,7 @@ from roosterize.interface.RoosterizeDirUtils import RoosterizeDirUtils
 
 
 class ProcessedFile(NamedTuple):
+    path: Path
     source_code: str
     doc: CoqDocument
     ast_sexp_list: List[SexpNode]
@@ -296,7 +297,7 @@ class CommandLineInterface:
             lemmas: List[Lemma] = DataMiner.collect_lemmas_doc(doc, ast_sexp_list, serapi_options)
             definitions: List[Definition] = DataMiner.collect_definitions_doc(doc, ast_sexp_list)
 
-        return ProcessedFile(source_code, doc, ast_sexp_list, tok_sexp_list, unicode_offsets, lemmas, definitions)
+        return ProcessedFile(file_path, source_code, doc, ast_sexp_list, tok_sexp_list, unicode_offsets, lemmas, definitions)
 
     def improve_project_model(self, prj_root: Optional[Path]):
         if prj_root is None:

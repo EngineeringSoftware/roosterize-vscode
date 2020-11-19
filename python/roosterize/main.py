@@ -139,33 +139,33 @@ def suggest_lemmas(**options):
 # User interfaces
 
 def download_global_model(**options):
-    from roosterize.UserInterface import UserInterface
-    ui = UserInterface()
+    from roosterize.interface.CommandLineInterface import CommandLineInterface
+    ui = CommandLineInterface()
     force_yes = Utils.get_option_as_boolean(options, "y")
     ui.download_global_model(force_yes)
 
 
 def suggest_naming(**options):
-    from roosterize.UserInterface import UserInterface
+    from roosterize.interface.CommandLineInterface import CommandLineInterface
     file_path = Path(options["file"])
     prj_root = options.get("project_root", None)
     if prj_root is not None:
         prj_root = Path(prj_root)
-    ui = UserInterface()
+    ui = CommandLineInterface()
     ui.suggest_naming(file_path, prj_root)
 
 
 def improve_project_model(**options):
-    from roosterize.UserInterface import UserInterface
+    from roosterize.interface.CommandLineInterface import CommandLineInterface
     prj_root = options.get("project_root", None)
     if prj_root is not None:
         prj_root = Path(prj_root)
-    ui = UserInterface()
+    ui = CommandLineInterface()
     ui.improve_project_model(prj_root)
 
 
 def vscode_server(**options):
-    from roosterize.VSCodeInterface import start_server
+    from roosterize.interface.VSCodeInterface import start_server
     start_server(**options)
 
 

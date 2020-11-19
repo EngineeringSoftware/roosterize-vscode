@@ -1,9 +1,6 @@
-from pathlib import Path
-
 from pygls.server import LanguageServer
 
-from roosterize.RoosterizeDirUtils import RoosterizeDirUtils
-from roosterize.UserInterface import UserInterface
+from roosterize.interface.CommandLineInterface import CommandLineInterface
 
 from roosterize.Utils import Utils
 
@@ -20,7 +17,7 @@ class RoosterizeLanguageServer(LanguageServer):
 
 
 roosterize_server = RoosterizeLanguageServer()
-ui = UserInterface()
+ui = CommandLineInterface()
 
 
 @roosterize_server.command(RoosterizeLanguageServer.CMD_SUGGEST_NAMING)

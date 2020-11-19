@@ -20,7 +20,7 @@ from roosterize.ml.MLModels import MLModels
 from roosterize.ml.naming.NamingModelBase import NamingModelBase
 from roosterize.parser.CoqParser import CoqParser, SexpNode, SexpParser
 from roosterize.parser.ParserUtils import ParserUtils
-from roosterize.RoosterizeDirUtils import RoosterizeDirUtils
+from roosterize.interface.RoosterizeDirUtils import RoosterizeDirUtils
 
 
 class ProcessedFile(NamedTuple):
@@ -33,7 +33,7 @@ class ProcessedFile(NamedTuple):
     definitions: List[Definition]
 
 
-class UserInterface:
+class CommandLineInterface:
 
     SHARED_CONFIGS = [
         "beam_search_size",

@@ -19,15 +19,11 @@
         "commands": [
             {
                 "command": "extension.roosterize.suggest_naming",
-                "title": "Roosterize: suggest naming"
+                "title": "Roosterize: Suggest Naming (for all opened .v files)"
             },
             {
                 "command": "extension.roosterize.download_global_model",
-                "title": "Roosterize: download global model"
-            },
-            {
-                "command": "extension.roosterize.improve_project_model",
-                "title": "Roosterize: improve project-specific model"
+                "title": "Roosterize: Download Model"
             }
         ]
     },

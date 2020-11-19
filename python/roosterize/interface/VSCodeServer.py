@@ -60,9 +60,10 @@ def download_global_model(ls: LanguageServer, *args):
         raise
 
 
-@roosterize_server.command(RoosterizeLanguageServer.CMD_IMPROVE_MODEL)
-def improve_project_model(ls: LanguageServer, *args):
-    ls.show_message(f"From server! improve_model args: {args}")
+# TODO: future work
+# @roosterize_server.command(RoosterizeLanguageServer.CMD_IMPROVE_MODEL)
+# def improve_project_model(ls: LanguageServer, *args):
+#     ls.show_message(f"From server! improve_model args: {args}")
 
 
 def start_server(**options):

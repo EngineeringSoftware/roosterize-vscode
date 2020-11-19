@@ -156,6 +156,8 @@ def suggest_naming(**options):
 
 
 def improve_project_model(**options):
+    # TODO: future work
+    raise NotImplementedError("Improve_project_model feature will be enabled in the future.")
     from roosterize.interface.CommandLineInterface import CommandLineInterface
     prj_root = options.get("project_root", None)
     if prj_root is not None:

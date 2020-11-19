@@ -5,6 +5,7 @@ import time
 from functools import partial
 from pathlib import Path
 from typing import Dict, List, NoReturn, Optional, Tuple
+import onmt
 
 import numpy as np
 import torch
@@ -381,7 +382,6 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
             val_processed_data_dir: Path,
     ) -> NoReturn:
         from roosterize.ml.onmt.MultiSourceInputter import MultiSourceInputter
-        import onmt.inputters as inputters
         from preprocess import _get_parser as preprocess_get_parser
         from preprocess import check_existing_pt_files
 
@@ -415,8 +415,8 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
             tgt_truncate=opt.tgt_seq_length_trunc,
         )
 
-        src_reader = inputters.str2reader["text"].from_opt(opt)
-        tgt_reader = inputters.str2reader["text"].from_opt(opt)
+        src_reader = onmt.inputters.str2reader["text"].from_opt(opt)
+        tgt_reader = onmt.inputters.str2reader["text"].from_opt(opt)
 
         logger.info("Building & saving training data...")
         self.build_save_dataset(train_processed_data_dir, 'train', fields, src_reader, tgt_reader, True, opt)
@@ -431,7 +431,6 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
             processed_data_dir: Path,
             corpus_type: str, fields, src_reader, tgt_reader, has_target: bool, opt
     ):
-        from onmt.inputters import str2sortkey
         from onmt.utils.misc import split_corpus
         from roosterize.ml.onmt.MultiSourceInputter import MultiSourceInputter
         from roosterize.ml.onmt.MultiSourceDataset import MultiSourceDataset
@@ -507,7 +506,7 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
                 readers=([src_reader] * len(self.config.get_src_types()) + ([tgt_reader] if tgt_reader else [])),
                 data=[(k, raw_data_shards[k][i]) for k in raw_data_keys],
                 dirs=[None] * len(raw_data_keys),
-                sort_key=str2sortkey[opt.data_type],
+                sort_key=onmt.inputters.str2sortkey[opt.data_type],
                 filter_pred=filter_pred,
                 can_copy=self.config.use_copy,
             )

@@ -1,9 +1,12 @@
 import shutil
 import tempfile
+import urllib
+import urllib.request
 from pathlib import Path
 from typing import List, NamedTuple, Optional, Tuple
 
 import numpy as np
+from roosterize.Macros import Macros
 from seutil import BashUtils, IOUtils
 
 from roosterize.data.CoqDocument import CoqDocument
@@ -36,7 +39,7 @@ class UserInterface:
         "min_suggestion_likelihood",
         "no_suggestion_if_in_top_k",
     ]
-    GLOBAL_CONFIGS = SHARED_CONFIGS
+    GLOBAL_CONFIGS = SHARED_CONFIGS + ["model_url"]
     LOCAL_CONFIGS = SHARED_CONFIGS + [
         "serapi_options",
         "exclude_files",
@@ -54,6 +57,7 @@ class UserInterface:
         self.exclude_files = None
         self.exclude_pattern = None
         self.serapi_options = None
+        self.model_url = Macros.model_url
         self.loaded_config_prj: Path = None
 
         self.load_configs()
@@ -105,7 +109,18 @@ class UserInterface:
                 return
             IOUtils.rm_dir(global_model_dir)
 
-        # TODO download from Macros.url
+        # Download and unpack
+        temp_model_dir = Path(tempfile.mkdtemp(prefix="roosterize"))
+
+        urllib.request.urlretrieve(self.model_url, str(temp_model_dir / "model.tgz"))
+        with IOUtils.cd(temp_model_dir):
+            BashUtils.run("tar xzf model.tgz", expected_return_code=0)
+
+            # Move the stuff to global model place
+            shutil.move(str(Path.cwd() / "model"), global_model_dir)
+
+        # Delete temp dir
+        IOUtils.rm_dir(temp_model_dir)
 
     def infer_serapi_options(self, prj_root: Path) -> str:
         serapi_options = None
@@ -157,8 +172,7 @@ class UserInterface:
 
         # Use the model to make predictions
         # Temp dirs for processed data and results
-        temp_data_dir = Path(tempfile.mktemp(prefix="roosterize", dir=True))
-        temp_data_dir.mkdir(parents=True)
+        temp_data_dir = Path(tempfile.mkdtemp(prefix="roosterize"))
 
         # Dump lemmas & definitions
         temp_raw_data_dir = temp_data_dir / "raw"
@@ -306,8 +320,7 @@ class UserInterface:
         model = self.get_model()
 
         # Collect all lemmas in this project
-        temp_data_dir = Path(tempfile.mktemp(prefix="roosterize", dir=True))
-        temp_data_dir.mkdir(parents=True)
+        temp_data_dir = Path(tempfile.mkdtemp(prefix="roosterize"))
 
         DataMiner.extract_data_project(
             prj_root,

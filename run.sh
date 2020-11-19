@@ -3,36 +3,61 @@
 _DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 
+# This script is for pre-training the models
+
+
 function process_data() {
+        local ds=$1; shift
+
         ( cd $_DIR/python/
-          rm -rf $_DIR/output/data
+          rm -rf $_DIR/output/$ds/data
           python -m roosterize.main extract_data_from_corpus\
                  --corpus=$_DIR/../math-comp-corpus\
-                 --output=$_DIR/output/data\
-                 --groups=ta
+                 --output=$_DIR/output/$ds/data\
+                 --groups=$ds
         )
 }
 
-function train() {
+function train_model() {
+        local ds=$1; shift
+        
         ( cd $_DIR/python/
-          rm -rf $_DIR/output/model
+          rm -rf $_DIR/output/$ds/model
           python -m roosterize.main train_model\
-                 --train=$_DIR/output/data/ta-train\
-                 --val=$_DIR/output/data/ta-val\
-                 --model-dir=$_DIR/output/model\
-                 --output=$_DIR/output/data\
+                 --train=$_DIR/output/$ds/data/$ds-train\
+                 --val=$_DIR/output/$ds/data/$ds-val\
+                 --model-dir=$_DIR/output/$ds/model\
+                 --output=$_DIR/output/$ds/data\
                  --config-file=$_DIR/configs/Stmt+ChopKnlTree+attn+copy.json
         )
 }
 
-function eval() {
-        ( cd $_DIR/python/
-          rm -rf $_DIR/output/results
-          python -m roosterize.main eval_model\
-                 --data=$_DIR/output/data/ta-test\
-                 --model-dir=$_DIR/output/model\
-                 --output=$_DIR/output/results
+function package_model() {
+        local ds=$1; shift
+        
+        ( cd $_DIR/output/$ds/
+          tar czf roosterize-model-$ds.tgz model/
         )
+}
+
+function eval_model() {
+        local ds=$1; shift
+        
+        ( cd $_DIR/python/
+          rm -rf $_DIR/output/$ds/results
+          python -m roosterize.main eval_model\
+                 --data=$_DIR/output/$ds/data/$ds-test\
+                 --model-dir=$_DIR/output/$ds/model\
+                 --output=$_DIR/output/$ds/results
+        )
+}
+
+function retrain_all_models() {
+        for ds in t1 ta; do
+                process_data $ds
+                train_model $ds
+                package_model $ds
+        done
 }
 
 

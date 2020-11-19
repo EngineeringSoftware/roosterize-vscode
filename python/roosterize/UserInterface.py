@@ -1,3 +1,4 @@
+import shutil
 import tempfile
 from pathlib import Path
 from typing import List, NamedTuple, Optional, Tuple
@@ -36,7 +37,11 @@ class UserInterface:
         "no_suggestion_if_in_top_k",
     ]
     GLOBAL_CONFIGS = SHARED_CONFIGS
-    LOCAL_CONFIGS = SHARED_CONFIGS + ["serapi_options"]
+    LOCAL_CONFIGS = SHARED_CONFIGS + [
+        "serapi_options",
+        "exclude_files",
+        "exclude_pattern",
+    ]
 
     def __init__(self):
         self.model: NamingModelBase = None
@@ -46,6 +51,8 @@ class UserInterface:
         self.k = 5
         self.min_suggestion_likelihood = 0.2
         self.no_suggestion_if_in_top_k = 3
+        self.exclude_files = None
+        self.exclude_pattern = None
         self.serapi_options = None
         self.loaded_config_prj: Path = None
 
@@ -82,27 +89,19 @@ class UserInterface:
         for f in fields:
             setattr(self, f, d[f])
 
-    @classmethod
-    def parse_yes_no_answer(cls, ans: str) -> Optional[bool]:
-        if str.lower(ans) in ["y", "yes"]:
-            return True
-        elif str.lower(ans) in ["n", "no"]:
-            return False
-        else:
-            return None
-
     def download_global_model(self, force_yes: bool = False):
         """
         Downloads a global Roosterize model.
         """
         global_model_dir = RoosterizeDirUtils.get_global_model_dir()
         if global_model_dir.exists():
-            print(f"A Roosterize model already exists at {global_model_dir}")
-            ans = self.parse_yes_no_answer(input(f"Do you want to delete it and download again? [yes/no] > "))
+            ans = self.ask_for_confirmation(
+                f"A Roosterize model already exists at {global_model_dir}"
+                f"Do you want to delete it and download again?"
+            )
             if force_yes:
                 ans = True
             if ans != True:
-                print(f"Cancelled")
                 return
             IOUtils.rm_dir(global_model_dir)
 
@@ -276,3 +275,68 @@ class UserInterface:
         definitions: List[Definition] = DataMiner.collect_definitions_doc(doc, ast_sexp_list)
 
         return ProcessedFile(source_code, doc, ast_sexp_list, tok_sexp_list, unicode_offsets, lemmas, definitions)
+
+    def improve_project_model(self, prj_root: Optional[Path]):
+        if prj_root is None:
+            prj_root = RoosterizeDirUtils.auto_infer_project_root()
+
+        # Deactivate loaded model
+        self.model = None
+
+        # Delete existing local model
+        local_model_dir = RoosterizeDirUtils.get_local_model_dir(prj_root)
+        if local_model_dir.exists():
+            ans = self.ask_for_confirmation(
+                f"A Roosterize model already exists at {local_model_dir}"
+                f"Do you want to delete it and train again?"
+            )
+            if not ans:
+                return
+            else:
+                IOUtils.rm_dir(local_model_dir)
+
+        # Copy global model to local model, but remove "training complete" marker
+        global_model_dir = RoosterizeDirUtils.get_global_model_dir()
+        if not global_model_dir.exists():
+            raise Exception("Global Roosterize model not found! Please download model first.")
+        shutil.copytree(global_model_dir, local_model_dir)
+
+        # Load local model
+        self.load_local_model(prj_root)
+        model = self.get_model()
+
+        # Collect all lemmas in this project
+        temp_data_dir = Path(tempfile.mktemp(prefix="roosterize", dir=True))
+        temp_data_dir.mkdir(parents=True)
+
+        DataMiner.extract_data_project(
+            prj_root,
+            files=None,
+            exclude_files=self.exclude_files,
+            exclude_pattern=self.exclude_pattern,
+            serapi_options=self.infer_serapi_options(prj_root),
+            output_path=temp_data_dir
+        )
+
+        # TODO: Split data into train/val set, then process each data (no pre-processing / rebuilding vocab!)
+
+        # TODO: Train model
+
+        # Delete temp file
+        IOUtils.rm_dir(temp_data_dir)
+
+    def ask_for_confirmation(self, text: str) -> bool:
+        ans = input(text + "\n[yes/no] > ")
+        parsed_ans = self.parse_yes_no_answer(ans)
+        if parsed_ans is None:
+            return False
+        return parsed_ans
+
+    @classmethod
+    def parse_yes_no_answer(cls, ans: str) -> Optional[bool]:
+        if str.lower(ans) in ["y", "yes"]:
+            return True
+        elif str.lower(ans) in ["n", "no"]:
+            return False
+        else:
+            return None

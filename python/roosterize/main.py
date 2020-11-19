@@ -155,9 +155,13 @@ def suggest_naming(**options):
     ui.suggest_naming(file_path, prj_root)
 
 
-def active_train_model_project(**options):
-    from roosterize.RoosterizeDirUtils import RoosterizeDirUtils
-    roosterize_dir = options.get("roosterize_dir", RoosterizeDirUtils.auto_infer_project_root())
+def improve_project_model(**options):
+    from roosterize.UserInterface import UserInterface
+    prj_root = options.get("project_root", None)
+    if prj_root is not None:
+        prj_root = Path(prj_root)
+    ui = UserInterface()
+    ui.improve_project_model(prj_root)
 
 
 def vscode_server(**options):

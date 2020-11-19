@@ -1,3 +1,5 @@
+import warnings
+import re
 import shutil
 import tempfile
 import urllib
@@ -61,6 +63,9 @@ class UserInterface:
         self.loaded_config_prj: Path = None
 
         self.load_configs()
+
+        # Filter out the torchtext warning. TODO: remove this filter after removing dependency to OpenNMT
+        warnings.filterwarnings("ignore", message="To copy construct from a tensor, it is recommended to use")
         return
 
     def load_configs(self, prj_root: Optional[Path] = None, force_reload: bool = False):
@@ -122,16 +127,13 @@ class UserInterface:
         # Delete temp dir
         IOUtils.rm_dir(temp_model_dir)
 
-    def infer_serapi_options(self, prj_root: Path) -> str:
-        serapi_options = None
+    RE_SERAPI_OPTIONS = re.compile(r"-R (?P<src>\S+) (?P<tgt>\S+)")
 
+    def infer_serapi_options(self, prj_root: Path) -> str:
         # Try to use the one loaded from config
         self.load_configs(prj_root)
         if self.serapi_options is not None:
-            serapi_options = self.serapi_options
-
-        if serapi_options is not None:
-            return serapi_options
+            return self.serapi_options
 
         # Try to infer from _CoqProject
         coq_project_file = prj_root / "_CoqProject"
@@ -139,17 +141,15 @@ class UserInterface:
         if coq_project_file.exists():
             coq_project = IOUtils.load(coq_project_file, IOUtils.Format.txt)
             for l in coq_project.splitlines():
-                if l.strip().startswith("-R "):
-                    possible_serapi_options.append(l)
+                match = self.RE_SERAPI_OPTIONS.fullmatch(l.strip())
+                if match is not None:
+                    possible_serapi_options.append(f"-R {match.group('src')},{match.group('tgt')}")
 
         if len(possible_serapi_options) > 0:
             serapi_options = " ".join(possible_serapi_options)
-
-        if serapi_options is not None:
             return serapi_options
-
-        # Fail to infer serapi options
-        raise RuntimeError("Cannot infer SerAPI options. Please specify it in .roosterizerc")
+        else:
+            return ""
 
     def suggest_naming(self, file_path: Path, prj_root: Optional[Path] = None):
         """
@@ -164,7 +164,7 @@ class UserInterface:
         serapi_options = self.infer_serapi_options(prj_root)
 
         # Parse file
-        data = self.parse_file(file_path, serapi_options)
+        data = self.parse_file(file_path, prj_root, serapi_options)
 
         # Load model
         self.load_local_model(prj_root)
@@ -214,11 +214,11 @@ class UserInterface:
         bad_names_no_suggestion: List[Tuple[Lemma, str, float]] = []
 
         for lemma, pred in zip(data.lemmas, candidates_logprobs):
-            acceptable_names = [n for n, s in candidates_logprobs[:self.no_suggestion_if_in_top_k]]
+            acceptable_names = [n for n, s in pred[:self.no_suggestion_if_in_top_k]]
             if lemma.name in acceptable_names:
                 good_names.append(lemma)
             else:
-                top_suggestion, logprob = candidates_logprobs[0]
+                top_suggestion, logprob = pred[0]
                 score = np.exp(logprob)
                 if score < self.min_suggestion_likelihood:
                     bad_names_no_suggestion.append((lemma, top_suggestion, score))
@@ -231,14 +231,14 @@ class UserInterface:
               f"{len(good_names)} ({len(good_names)/total:.1%}) look good.")
         if len(bad_names_and_suggestions) > 0:
             print(f"==========")
-            print(f"== {bad_names_and_suggestions} can be improved and here are Roosterize's suggestions:")
-            for lemma, suggestion, score in bad_names_and_suggestions:
-                print(f"Line {lemma.vernac_command[0].lineno}: {lemma.name} => {suggestion} (likelihood: {score})")
+            print(f"== {len(bad_names_and_suggestions)} can be improved and here are Roosterize's suggestions:")
+            for lemma, suggestion, score in sorted(bad_names_and_suggestions, key=lambda x: x[2], reverse=True):
+                print(f"Line {lemma.vernac_command[0].lineno}: {lemma.name} => {suggestion} (likelihood: {score:.2f})")
         if len(bad_names_no_suggestion) > 0:
             print(f"==========")
-            print(f"== {bad_names_no_suggestion} can be improved but Roosterize cannot provide suggestion:")
-            for lemma, suggestion, score in bad_names_no_suggestion:
-                print(f"Line {lemma.vernac_command[0].lineno}: {lemma.name} (best guess: {suggestion}; likelihood: {score})")
+            print(f"== {len(bad_names_no_suggestion)} can be improved but Roosterize cannot provide good suggestion (please consider improve_project_model):")
+            for lemma, suggestion, score in sorted(bad_names_no_suggestion, key=lambda x: x[2], reverse=True):
+                print(f"Line {lemma.vernac_command[0].lineno}: {lemma.name} (best guess: {suggestion}; likelihood: {score:.2f})")
 
     def load_local_model(self, prj_root: Path) -> None:
         """
@@ -251,7 +251,7 @@ class UserInterface:
                     IOUtils.load(local_model_dir / "spec.json", IOUtils.Format.json),
                     ModelSpec,
                 )
-                self.model = MLModels.get_model(model_spec, is_eval=True)
+                self.model = MLModels.get_model(local_model_dir, model_spec, is_eval=True)
 
     def get_model(self) -> NamingModelBase:
         """
@@ -265,28 +265,32 @@ class UserInterface:
                 IOUtils.load(global_model_dir / "spec.json", IOUtils.Format.json),
                 ModelSpec,
             )
-            self.model = MLModels.get_model(model_spec, is_eval=True)
+            self.model = MLModels.get_model(global_model_dir, model_spec, is_eval=True)
         return self.model
 
-    def parse_file(self, file_path: Path, serapi_options):
+    def parse_file(self, file_path: Path, prj_root: Path, serapi_options: str):
         source_code = IOUtils.load(file_path, IOUtils.Format.txt)
         unicode_offsets = ParserUtils.get_unicode_offsets(source_code)
-        ast_sexp_str = BashUtils.run(f"sercomp {serapi_options} --mode=sexp -- {file_path}", expected_return_code=0).stdout
-        tok_sexp_str = BashUtils.run(f"sertok {serapi_options} --mode=sexp -- {file_path}", expected_return_code=0).stdout
 
-        ast_sexp_list: List[SexpNode] = SexpParser.parse_list(ast_sexp_str)
-        tok_sexp_list: List[SexpNode] = SexpParser.parse_list(tok_sexp_str)
+        with IOUtils.cd(prj_root):
+            rel_path = file_path.relative_to(prj_root)
+            ast_sexp_str = BashUtils.run(f"sercomp {serapi_options} --mode=sexp -- {rel_path}", expected_return_code=0).stdout
+            tok_sexp_str = BashUtils.run(f"sertok {serapi_options} -- {rel_path}", expected_return_code=0).stdout
 
-        doc = CoqParser.parse_document(
-            source_code,
-            ast_sexp_list,
-            tok_sexp_list,
-            unicode_offsets=unicode_offsets,
-        )
+            ast_sexp_list: List[SexpNode] = SexpParser.parse_list(ast_sexp_str)
+            tok_sexp_list: List[SexpNode] = SexpParser.parse_list(tok_sexp_str)
 
-        # Collect lemmas & definitions
-        lemmas: List[Lemma] = DataMiner.collect_lemmas_doc(doc, ast_sexp_list, serapi_options)
-        definitions: List[Definition] = DataMiner.collect_definitions_doc(doc, ast_sexp_list)
+            doc = CoqParser.parse_document(
+                source_code,
+                ast_sexp_list,
+                tok_sexp_list,
+                unicode_offsets=unicode_offsets,
+            )
+            doc.file_name = str(rel_path)
+
+            # Collect lemmas & definitions
+            lemmas: List[Lemma] = DataMiner.collect_lemmas_doc(doc, ast_sexp_list, serapi_options)
+            definitions: List[Definition] = DataMiner.collect_definitions_doc(doc, ast_sexp_list)
 
         return ProcessedFile(source_code, doc, ast_sexp_list, tok_sexp_list, unicode_offsets, lemmas, definitions)
 

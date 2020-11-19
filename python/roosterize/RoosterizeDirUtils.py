@@ -26,7 +26,7 @@ class RoosterizeDirUtils:
 
         # Find the latest _CoqProject directory
         while True:
-            if len(curp) <= 1:
+            if len(curp.parts) <= 1:
                 raise IOError("Cannot find _CoqProject")
 
             if not curp.is_dir():

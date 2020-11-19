@@ -3,7 +3,7 @@ future
 nltk~=3.5
 numpy~=1.19.2
 pygls~=0.9.1
-seutil>=0.5.3
+seutil>=0.5.4
 six
 torch==1.1.0
 torchtext==0.4.0

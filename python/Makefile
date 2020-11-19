@@ -4,10 +4,14 @@ INSTALL_DIR = $(HOME)/opt
 all: package
 
 .PHONY: package
-package: dist/roosterize/roosterize
+package: dist/roosterize/roosterize dist/roosterize.tgz
+
 dist/roosterize/roosterize: roosterize/main.py
 	pyinstaller $^ -n roosterize \
 		-y --log-level WARN
+
+dist/roosterize.tgz: dist/roosterize/roosterize
+	cd dist && tar czf roosterize.tgz roosterize/
 
 .PHONY: install
 install: package

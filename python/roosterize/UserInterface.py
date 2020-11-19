@@ -2,6 +2,7 @@ import tempfile
 from pathlib import Path
 from typing import List, NamedTuple, Optional, Tuple
 
+import numpy as np
 from seutil import BashUtils, IOUtils
 
 from roosterize.data.CoqDocument import CoqDocument
@@ -28,12 +29,58 @@ class ProcessedFile(NamedTuple):
 
 class UserInterface:
 
-    DEFAULT_BEAM_SEARCH_SIZE = 5
-    DEFAULT_K = 5
+    SHARED_CONFIGS = [
+        "beam_search_size",
+        "k",
+        "min_suggestion_likelihood",
+        "no_suggestion_if_in_top_k",
+    ]
+    GLOBAL_CONFIGS = SHARED_CONFIGS
+    LOCAL_CONFIGS = SHARED_CONFIGS + ["serapi_options"]
 
     def __init__(self):
         self.model: NamingModelBase = None
+
+        # Configs (default values)
+        self.beam_search_size = 5
+        self.k = 5
+        self.min_suggestion_likelihood = 0.2
+        self.no_suggestion_if_in_top_k = 3
+        self.serapi_options = None
+        self.loaded_config_prj: Path = None
+
+        self.load_configs()
         return
+
+    def load_configs(self, prj_root: Optional[Path] = None, force_reload: bool = False):
+        """
+        Load configs (first project-local, then global) to this user interface.
+        """
+        # If the configs of the current project is already loaded, skip
+        if not force_reload and prj_root is not None and prj_root == self.loaded_config_prj:
+            return
+
+        # Reset the project-local config indicator
+        self.loaded_config_prj = None
+
+        # First, load global config
+        global_config_file = RoosterizeDirUtils.get_global_config_file()
+        if global_config_file.exists():
+            global_config = IOUtils.load(global_config_file, IOUtils.Format.json)
+            self.set_configs_from_dict(global_config, self.GLOBAL_CONFIGS)
+
+        # Then, load local config
+        if prj_root is not None:
+            local_config_file = RoosterizeDirUtils.get_local_config_file(prj_root)
+            if local_config_file.exists():
+                local_config = IOUtils.load(local_config_file, IOUtils.Format.json)
+                self.set_configs_from_dict(local_config, self.LOCAL_CONFIGS)
+
+            self.loaded_config_prj = prj_root
+
+    def set_configs_from_dict(self, d: dict, fields: List[str]):
+        for f in fields:
+            setattr(self, f, d[f])
 
     @classmethod
     def parse_yes_no_answer(cls, ans: str) -> Optional[bool]:
@@ -64,16 +111,15 @@ class UserInterface:
     def infer_serapi_options(self, prj_root: Path) -> str:
         serapi_options = None
 
-        # 1. Try to read from config file
-        config_file = RoosterizeDirUtils.get_local_config_file(prj_root)
-        if config_file.exists():
-            config = IOUtils.load(config_file, IOUtils.Format.json)
-            serapi_options = config.get("serapi_options")
+        # Try to use the one loaded from config
+        self.load_configs(prj_root)
+        if self.serapi_options is not None:
+            serapi_options = self.serapi_options
 
         if serapi_options is not None:
             return serapi_options
 
-        # 2. Try to infer from _CoqProject
+        # Try to infer from _CoqProject
         coq_project_file = prj_root / "_CoqProject"
         possible_serapi_options = []
         if coq_project_file.exists():
@@ -95,10 +141,12 @@ class UserInterface:
         """
         Processes a file to get its lemmas and runs the model to get predictions.
         """
-        # Infer SerAPI options
+        # Figure out which project we're at, and then load configs
         if prj_root is None:
             prj_root = RoosterizeDirUtils.auto_infer_project_root(file_path)
+        self.load_configs(prj_root)
 
+        # Infer SerAPI options
         serapi_options = self.infer_serapi_options(prj_root)
 
         # Parse file
@@ -135,8 +183,8 @@ class UserInterface:
         # Invoke eval
         candidates_logprobs = model.eval_impl(
             temp_processed_data_dir,
-            beam_search_size=self.DEFAULT_BEAM_SEARCH_SIZE,
-            k=self.DEFAULT_K,
+            beam_search_size=self.beam_search_size,
+            k=self.k,
         )
 
         # Save predictions
@@ -147,9 +195,37 @@ class UserInterface:
         return
 
     def report_predictions(self, data: ProcessedFile, candidates_logprobs: List[List[Tuple[str, float]]]):
-        # TODO implement
-        print(candidates_logprobs)
-        pass
+        # First, figure out what to suggest
+        good_names: List[Lemma] = []
+        bad_names_and_suggestions: List[Tuple[Lemma, str, float]] = []
+        bad_names_no_suggestion: List[Tuple[Lemma, str, float]] = []
+
+        for lemma, pred in zip(data.lemmas, candidates_logprobs):
+            acceptable_names = [n for n, s in candidates_logprobs[:self.no_suggestion_if_in_top_k]]
+            if lemma.name in acceptable_names:
+                good_names.append(lemma)
+            else:
+                top_suggestion, logprob = candidates_logprobs[0]
+                score = np.exp(logprob)
+                if score < self.min_suggestion_likelihood:
+                    bad_names_no_suggestion.append((lemma, top_suggestion, score))
+                else:
+                    bad_names_and_suggestions.append((lemma, top_suggestion, score))
+
+        # Print suggestions
+        total = len(good_names) + len(bad_names_and_suggestions) + len(bad_names_no_suggestion)
+        print(f"== Analyzed {total} lemma names, "
+              f"{len(good_names)} ({len(good_names)/total:.1%}) look good.")
+        if len(bad_names_and_suggestions) > 0:
+            print(f"==========")
+            print(f"== {bad_names_and_suggestions} can be improved and here are Roosterize's suggestions:")
+            for lemma, suggestion, score in bad_names_and_suggestions:
+                print(f"Line {lemma.vernac_command[0].lineno}: {lemma.name} => {suggestion} (likelihood: {score})")
+        if len(bad_names_no_suggestion) > 0:
+            print(f"==========")
+            print(f"== {bad_names_no_suggestion} can be improved but Roosterize cannot provide suggestion:")
+            for lemma, suggestion, score in bad_names_no_suggestion:
+                print(f"Line {lemma.vernac_command[0].lineno}: {lemma.name} (best guess: {suggestion}; likelihood: {score})")
 
     def load_local_model(self, prj_root: Path) -> None:
         """

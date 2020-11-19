@@ -22,7 +22,6 @@ from roosterize.data.ModelSpec import ModelSpec
 from roosterize.Macros import Macros
 from roosterize.ml.naming.NamingModelBase import NamingModelBase
 from roosterize.ml.naming.SubTokenizer import SubTokenizer
-from roosterize.ml.onmt.MultiSourceTranslator import LoadedModel
 from roosterize.Utils import Utils
 
 logger = LoggingUtils.get_logger(__name__)
@@ -253,7 +252,7 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
         # Cache for processing data
         self.data_cache: dict = dict()
         # Cache for loaded model during translation
-        self.loaded_model_cache: LoadedModel = None
+        self.loaded_model_cache = None
         return
 
     def get_input(

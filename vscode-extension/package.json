@@ -2,9 +2,9 @@
     "name": "roosterize-vscode",
     "displayName": "Roosterize",
     "description": "Roosterize",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "publisher": "EngineeringSoftware",
-    "repository": "https://github.com/EngineeringSoftware/roosterize-vscoq",
+    "repository": "https://github.com/EngineeringSoftware/roosterize-vscode",
     "engines": {
         "vscode": "^1.34.0"
     },

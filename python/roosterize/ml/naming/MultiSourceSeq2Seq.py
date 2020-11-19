@@ -230,19 +230,6 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
 
         self.open_nmt_path = Macros.project_dir
 
-        # Hack OpenNMT logging
-        Utils.modify_and_import("onmt.utils.logging", None,
-            lambda x: f"from seutil import LoggingUtils\n"
-                      f"logger = LoggingUtils.get_logger(__name__)\n"
-                      f"def init_logger(log_file=None, log_file_level=None):\n"
-                      f"  return logger\n"
-        )
-        module_names = list(sys.modules.keys())
-        for module_name in module_names:
-            if (module_name.startswith("onmt.") or module_name == "onmt")\
-                    and module_name != "onmt.utils.logging":
-                sys.modules.pop(module_name)
-
         if not torch.cuda.is_available():
             self.logger.info("Cuda is not available")
         self.device_tag = "cuda:0" if torch.cuda.is_available() else "cpu"

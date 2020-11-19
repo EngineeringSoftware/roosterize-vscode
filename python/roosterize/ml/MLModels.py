@@ -14,7 +14,9 @@ logger = LoggingUtils.get_logger(__name__)
 class MLModels:
 
     @classmethod
-    def get_model(cls,
+    def get_model(
+            cls,
+            model_dir: Path,
             model_spec: ModelSpec,
             is_eval: bool = False,
     ) -> "MLModelBase":
@@ -26,7 +28,7 @@ class MLModels:
             except (ValueError, FileNotFoundError):
                 pass
 
-        return model_cls(model_spec)
+        return model_cls(model_dir, model_spec)
 
     @classmethod
     def generate_configs(cls, name: str, path: Path, **options):

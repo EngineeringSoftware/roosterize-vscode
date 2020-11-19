@@ -144,17 +144,14 @@ def download_global_model(**options):
     ui.download_global_model(force_yes)
 
 
-def process_file(**options):
-    from roosterize.RoosterizeDirUtils import RoosterizeDirUtils
-    file = options["file"]
-    roosterize_dir = options.get("roosterize_dir", RoosterizeDirUtils.auto_infer_project_root(Path(file)))
-    pass
-
-
-def suggest_name_file(**options):
-    from roosterize.RoosterizeDirUtils import RoosterizeDirUtils
-    file = options["file"]
-    roosterize_dir = options.get("roosterize_dir", RoosterizeDirUtils.auto_infer_project_root(Path(file)))
+def suggest_naming(**options):
+    from roosterize.UserInterface import UserInterface
+    file_path = Path(options["file"])
+    prj_root = options.get("project_root", None)
+    if prj_root is not None:
+        prj_root = Path(prj_root)
+    ui = UserInterface()
+    ui.suggest_naming(file_path, prj_root)
 
 
 def active_train_model_project(**options):

@@ -21,6 +21,7 @@ from roosterize.data.ModelSpec import ModelSpec
 from roosterize.Macros import Macros
 from roosterize.ml.naming.NamingModelBase import NamingModelBase
 from roosterize.ml.naming.SubTokenizer import SubTokenizer
+from roosterize.ml.onmt.MultiSourceTranslator import LoadedModel
 from roosterize.Utils import Utils
 
 logger = LoggingUtils.get_logger(__name__)
@@ -225,8 +226,8 @@ class MultiSourceSeq2SeqConfig(RecordClass):
 
 class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
 
-    def __init__(self, model_spec: ModelSpec):
-        super().__init__(model_spec, MultiSourceSeq2SeqConfig)
+    def __init__(self, model_dir: Path, model_spec: ModelSpec):
+        super().__init__(model_dir, model_spec, MultiSourceSeq2SeqConfig)
 
         self.open_nmt_path = Macros.project_dir
 
@@ -248,7 +249,10 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
         self.device_tag = "cuda:0" if torch.cuda.is_available() else "cpu"
         self.device = torch.device(self.device_tag)
 
-        self.data_cache: dict = dict()  # For caching some data during data processing
+        # Cache for processing data
+        self.data_cache: dict = dict()
+        # Cache for loaded model during translation
+        self.loaded_model_cache: LoadedModel = None
         return
 
     def get_input(
@@ -375,7 +379,6 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
             self,
             train_processed_data_dir: Path,
             val_processed_data_dir: Path,
-            output_model_dir: Path
     ) -> NoReturn:
         from roosterize.ml.onmt.MultiSourceInputter import MultiSourceInputter
         import onmt.inputters as inputters
@@ -389,7 +392,7 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
             f" -train_tgt {train_processed_data_dir}/tgt.txt"
             f" -valid_src {val_processed_data_dir}/src.txt"
             f" -valid_tgt {val_processed_data_dir}/tgt.txt"
-            f" -save_data {output_model_dir}/processed-data"
+            f" -save_data {self.model_dir}/processed-data"
         )
         opt.src_seq_length = self.config.input_max
         opt.src_words_min_frequency = self.config.vocab_input_frequency_threshold
@@ -559,9 +562,8 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
             self,
             train_processed_data_dir: Path,
             val_processed_data_dir: Path,
-            output_model_dir: Path,
     ) -> NoReturn:
-        self.preprocess(train_processed_data_dir, val_processed_data_dir, output_model_dir)
+        self.preprocess(train_processed_data_dir, val_processed_data_dir)
 
         from train import _get_parser as train_get_parser
         from train import ErrorHandler, batch_producer
@@ -573,8 +575,8 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
         with IOUtils.cd(self.open_nmt_path):
             parser = train_get_parser()
             opt = parser.parse_args(
-                f" -data {output_model_dir}/processed-data"
-                f" -save_model {output_model_dir}/models/ckpt"
+                f" -data {self.model_dir}/processed-data"
+                f" -save_model {self.model_dir}/models/ckpt"
             )
             opt.gpu_ranks = [0]
             opt.early_stopping = self.config.early_stopping_threshold
@@ -684,12 +686,21 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
                 producer.terminate()
 
             elif nb_gpu == 1:  # case 1 GPU only
-                self.train_single(output_model_dir, opt, 0)
+                self.train_single(opt, 0)
             else:  # case only CPU
-                self.train_single(output_model_dir, opt, -1)
+                self.train_single(opt, -1)
+
+        # Delete unneeded model checkpoints
+        best_step = IOUtils.load(self.model_dir / "best-step.json", IOUtils.Format.json)
+        for f in (self.model_dir / "models").glob("ckpt_step_*.pt"):
+            if f.name != f"ckpt_step_{best_step}.pt":
+                f.unlink()
+
+        # Make model cache invalid
+        self.loaded_model_cache = None
         return
 
-    def train_single(self, output_model_dir: Path, opt, device_id, batch_queue=None, semaphore=None):
+    def train_single(self, opt, device_id, batch_queue=None, semaphore=None):
         from roosterize.ml.onmt.MultiSourceInputter import MultiSourceInputter
         from roosterize.ml.onmt.MultiSourceModelBuilder import MultiSourceModelBuilder
         from roosterize.ml.onmt.MultiSourceModelSaver import MultiSourceModelSaver
@@ -807,18 +818,17 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
             "time": time_end - time_begin,
             "train_history": train_history,
         }
-        IOUtils.dump(output_model_dir/"train-metrics.json", train_metrics, IOUtils.Format.jsonNoSort)
+        IOUtils.dump(self.model_dir/"train-metrics.json", train_metrics, IOUtils.Format.jsonNoSort)
 
         # Get the best step, depending on the lowest val_xent (cross entropy)
         best_loss = min([th["val_xent"] for th in train_history])
         best_step = [th["step"] for th in train_history if th["val_xent"] == best_loss][-1]  # Take the last if multiple
-        IOUtils.dump(output_model_dir/"best-step.json", best_step, IOUtils.Format.json)
+        IOUtils.dump(self.model_dir/"best-step.json", best_step, IOUtils.Format.json)
         return
 
     def eval_impl(
             self,
             processed_data_dir: Path,
-            model_dir: Path,
             beam_search_size: int,
             k: int
     ) -> List[List[Tuple[str, float]]]:
@@ -830,7 +840,7 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
         src_path = processed_data_dir/"src.txt"
         tgt_path = processed_data_dir/"tgt.txt"
 
-        best_step = IOUtils.load(model_dir/"best-step.json", IOUtils.Format.json)
+        best_step = IOUtils.load(self.model_dir/"best-step.json", IOUtils.Format.json)
         self.logger.info(f"Taking best step at {best_step}")
 
         candidates_logprobs: List[List[Tuple[List[str], float]]] = list()
@@ -838,11 +848,11 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
         with IOUtils.cd(self.open_nmt_path):
             parser = translate_get_parser()
             opt = parser.parse_args(
-                f" -model {model_dir}/models/ckpt_step_{best_step}.pt"
+                f" -model {self.model_dir}/models/ckpt_step_{best_step}.pt"
                 f" -src {src_path}"
                 f" -tgt {tgt_path}"
             )
-            opt.output = f"{model_dir}/last-pred.txt"
+            opt.output = f"{self.model_dir}/last-pred.txt"
             opt.beam_size = beam_search_size
             opt.gpu = 0 if torch.cuda.is_available() else -1
             opt.n_best = k
@@ -852,7 +862,15 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
             # translate.main
             ArgumentParser.validate_translate_opts(opt)
 
-            translator = MultiSourceTranslator.build_translator(self.config.get_src_types(), opt, report_score=False)
+            # Cached model loading
+            if self.loaded_model_cache is None:
+                self.loaded_model_cache = MultiSourceTranslator.load_model(self.config.get_src_types(), opt)
+            translator = MultiSourceTranslator.build_translator(
+                self.config.get_src_types(),
+                opt,
+                loaded_model=self.loaded_model_cache,
+                report_score=False,
+            )
 
             has_target = True
             raw_data_keys = [f"src.{src_type}" for src_type in self.config.get_src_types()] + (["tgt"] if has_target else [])

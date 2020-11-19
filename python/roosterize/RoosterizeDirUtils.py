@@ -41,9 +41,9 @@ class RoosterizeDirUtils:
 
         return curp
 
-    @classmethod
-    def get_local_cache_dir(cls, prj_root: Path):
-        return prj_root / ".roosterize" / "files"
+    # @classmethod
+    # def get_local_cache_dir(cls, prj_root: Path):
+    #     return prj_root / ".roosterize" / "files"
 
     @classmethod
     def get_local_model_dir(cls, prj_root: Path):

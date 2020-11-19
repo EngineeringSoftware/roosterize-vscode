@@ -1,17 +1,16 @@
+import tempfile
 from pathlib import Path
-from typing import List, NamedTuple, Optional
+from typing import List, NamedTuple, Optional, Tuple
 
-from roosterize.ml.naming.NamingModelBase import NamingModelBase
-
-from roosterize.data.Definition import Definition
-
-from roosterize.data.DataMiner import DataMiner
-
-from roosterize.data.Lemma import Lemma
-
-from roosterize.data.CoqDocument import CoqDocument
 from seutil import BashUtils, IOUtils
 
+from roosterize.data.CoqDocument import CoqDocument
+from roosterize.data.DataMiner import DataMiner
+from roosterize.data.Definition import Definition
+from roosterize.data.Lemma import Lemma
+from roosterize.data.ModelSpec import ModelSpec
+from roosterize.ml.MLModels import MLModels
+from roosterize.ml.naming.NamingModelBase import NamingModelBase
 from roosterize.parser.CoqParser import CoqParser, SexpNode, SexpParser
 from roosterize.parser.ParserUtils import ParserUtils
 from roosterize.RoosterizeDirUtils import RoosterizeDirUtils
@@ -26,7 +25,11 @@ class ProcessedFile(NamedTuple):
     lemmas: List[Lemma]
     definitions: List[Definition]
 
+
 class UserInterface:
+
+    DEFAULT_BEAM_SEARCH_SIZE = 5
+    DEFAULT_K = 5
 
     def __init__(self):
         self.model: NamingModelBase = None
@@ -99,19 +102,82 @@ class UserInterface:
         serapi_options = self.infer_serapi_options(prj_root)
 
         # Parse file
-        processed_file = self.parse_file(file_path, serapi_options)
+        data = self.parse_file(file_path, serapi_options)
 
         # Load model
-        self.load_model()
+        self.load_local_model(prj_root)
+        model = self.get_model()
 
-        # TODO use the model to make predictions
+        # Use the model to make predictions
+        # Temp dirs for processed data and results
+        temp_data_dir = Path(tempfile.mktemp(prefix="roosterize", dir=True))
+        temp_data_dir.mkdir(parents=True)
 
-    def load_model(self) -> NamingModelBase:
+        # Dump lemmas & definitions
+        temp_raw_data_dir = temp_data_dir / "raw"
+        temp_raw_data_dir.mkdir()
+        IOUtils.dump(
+            temp_raw_data_dir / "lemmas.json",
+            IOUtils.jsonfy(data.lemmas),
+            IOUtils.Format.json,
+        )
+        IOUtils.dump(
+            temp_raw_data_dir / "definitions.json",
+            IOUtils.jsonfy(data.definitions),
+            IOUtils.Format.json,
+        )
+
+        # Model-specific process
+        temp_processed_data_dir = temp_data_dir / "processed"
+        temp_processed_data_dir.mkdir()
+        model.process_data_impl(temp_raw_data_dir, temp_processed_data_dir)
+
+        # Invoke eval
+        candidates_logprobs = model.eval_impl(
+            temp_processed_data_dir,
+            beam_search_size=self.DEFAULT_BEAM_SEARCH_SIZE,
+            k=self.DEFAULT_K,
+        )
+
+        # Save predictions
+        IOUtils.rm_dir(temp_data_dir)
+
+        # Report predictions
+        self.report_predictions(data, candidates_logprobs)
+        return
+
+    def report_predictions(self, data: ProcessedFile, candidates_logprobs: List[List[Tuple[str, float]]]):
+        # TODO implement
+        print(candidates_logprobs)
+        pass
+
+    def load_local_model(self, prj_root: Path) -> None:
+        """
+        Try to load the local model, if it exists; otherwise do nothing.
+        """
         if self.model is None:
-            # TODO load cache model if it exists, otherwise load global model
-            pass
-        else:
-            return self.model
+            local_model_dir = RoosterizeDirUtils.get_local_model_dir(prj_root)
+            if local_model_dir.is_dir():
+                model_spec = IOUtils.dejsonfy(
+                    IOUtils.load(local_model_dir / "spec.json", IOUtils.Format.json),
+                    ModelSpec,
+                )
+                self.model = MLModels.get_model(model_spec, is_eval=True)
+
+    def get_model(self) -> NamingModelBase:
+        """
+        Try to get the currently loaded model; if no model is loaded, gets the global model.
+        The local model can be loaded by invoking load_local_model (before invoking this method).
+        """
+        if self.model is None:
+            # Load global model
+            global_model_dir = RoosterizeDirUtils.get_global_model_dir()
+            model_spec = IOUtils.dejsonfy(
+                IOUtils.load(global_model_dir / "spec.json", IOUtils.Format.json),
+                ModelSpec,
+            )
+            self.model = MLModels.get_model(model_spec, is_eval=True)
+        return self.model
 
     def parse_file(self, file_path: Path, serapi_options):
         source_code = IOUtils.load(file_path, IOUtils.Format.txt)

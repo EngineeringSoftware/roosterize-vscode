@@ -5,6 +5,6 @@ numpy~=1.19.2
 pygls~=0.9.1
 seutil>=0.5.4
 six
-torch==1.1.0
-torchtext==0.4.0
+torch==1.1.0 -f https://download.pytorch.org/whl/cpu/torch_stable.html
+torchtext==0.4.0 -f https://download.pytorch.org/whl/cpu/torch_stable.html
 tqdm~=4.30.0

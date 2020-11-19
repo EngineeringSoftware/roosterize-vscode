@@ -21,9 +21,9 @@ from seutil import LoggingUtils
 
 
 class LoadedModel(NamedTuple):
-    fields = None
-    model = None
-    model_opt = None
+    fields: any
+    model: any
+    model_opt: any
 
 
 class MultiSourceTranslator(CustomTranslator):

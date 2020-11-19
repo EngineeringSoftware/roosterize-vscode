@@ -22,11 +22,11 @@
                 "title": "Roosterize: suggest naming"
             },
             {
-                "command": "extension.roosterize.download_model",
-                "title": "Roosterize: download model"
+                "command": "extension.roosterize.download_global_model",
+                "title": "Roosterize: download global model"
             },
             {
-                "command": "extension.roosterize.improve_model",
+                "command": "extension.roosterize.improve_project_model",
                 "title": "Roosterize: improve project-specific model"
             }
         ]

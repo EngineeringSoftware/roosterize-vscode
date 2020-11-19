@@ -105,7 +105,7 @@ class CommandLineInterface:
         global_model_dir = RoosterizeDirUtils.get_global_model_dir()
         if global_model_dir.exists():
             ans = self.ask_for_confirmation(
-                f"A Roosterize model already exists at {global_model_dir}"
+                f"A Roosterize model already exists at {global_model_dir}. "
                 f"Do you want to delete it and download again?"
             )
             if force_yes:
@@ -113,6 +113,8 @@ class CommandLineInterface:
             if ans != True:
                 return
             IOUtils.rm_dir(global_model_dir)
+
+        self.show_message("Downloading Roosterize model...")
 
         # Download and unpack
         temp_model_dir = Path(tempfile.mkdtemp(prefix="roosterize"))
@@ -126,6 +128,8 @@ class CommandLineInterface:
 
         # Delete temp dir
         IOUtils.rm_dir(temp_model_dir)
+
+        self.show_message("Finish downloading Roosterize model.")
 
     RE_SERAPI_OPTIONS = re.compile(r"-R (?P<src>\S+) (?P<tgt>\S+)")
 
@@ -357,3 +361,6 @@ class CommandLineInterface:
             return False
         else:
             return None
+
+    def show_message(self, text: str):
+        print(text)

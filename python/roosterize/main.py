@@ -165,7 +165,7 @@ def improve_project_model(**options):
 
 
 def vscode_server(**options):
-    from roosterize.interface.VSCodeInterface import start_server
+    from roosterize.interface.VSCodeServer import start_server
     start_server(**options)
 
 

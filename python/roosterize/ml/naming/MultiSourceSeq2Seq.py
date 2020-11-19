@@ -431,7 +431,7 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
             processed_data_dir: Path,
             corpus_type: str, fields, src_reader, tgt_reader, has_target: bool, opt
     ):
-        import onmt.inputters as inputters
+        from onmt.inputters import str2sortkey
         from onmt.utils.misc import split_corpus
         from roosterize.ml.onmt.MultiSourceInputter import MultiSourceInputter
         from roosterize.ml.onmt.MultiSourceDataset import MultiSourceDataset
@@ -507,7 +507,7 @@ class MultiSourceSeq2Seq(NamingModelBase[MultiSourceSeq2SeqConfig]):
                 readers=([src_reader] * len(self.config.get_src_types()) + ([tgt_reader] if tgt_reader else [])),
                 data=[(k, raw_data_shards[k][i]) for k in raw_data_keys],
                 dirs=[None] * len(raw_data_keys),
-                sort_key=inputters.str2sortkey[opt.data_type],
+                sort_key=str2sortkey[opt.data_type],
                 filter_pred=filter_pred,
                 can_copy=self.config.use_copy,
             )

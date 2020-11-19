@@ -5,6 +5,7 @@ _DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 function process_data() {
         ( cd $_DIR/python/
+          rm -rf $_DIR/output/data
           python -m roosterize.main extract_data_from_corpus\
                  --corpus=$_DIR/../math-comp-corpus\
                  --output=$_DIR/output/data\
@@ -14,7 +15,7 @@ function process_data() {
 
 function train() {
         ( cd $_DIR/python/
-          rm -rf output/model
+          rm -rf $_DIR/output/model
           python -m roosterize.main train_model\
                  --train=$_DIR/output/data/ta-train\
                  --val=$_DIR/output/data/ta-val\
@@ -26,6 +27,7 @@ function train() {
 
 function eval() {
         ( cd $_DIR/python/
+          rm -rf $_DIR/output/results
           python -m roosterize.main eval_model\
                  --data=$_DIR/output/data/ta-test\
                  --model-dir=$_DIR/output/model\

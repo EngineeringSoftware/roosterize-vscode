@@ -1,5 +1,5 @@
 from typing import Optional
-from pathlib import Path
+from pathlib import Path, PurePath
 
 from seutil import IOUtils
 
@@ -52,3 +52,31 @@ class RoosterizeDirUtils:
     @classmethod
     def get_global_model_dir(cls):
         return Path.home() / ".roosterize" / "model"
+
+    @classmethod
+    def get_local_config_file(cls, prj_root: Path):
+        return prj_root / ".roosterizerc"
+
+    @classmethod
+    def get_global_config_file(cls):
+        return Path.home() / ".roosterizerc"
+
+    # @classmethod
+    # def get_cache_rel_path(cls, file_path: Path, prj_root: Path) -> PurePath:
+    #     """
+    #     Gets the relative path (relative to cache_dir) of the cache file.
+    #     """
+    #     rel_path = file_path.relative_to(prj_root)
+    #     # Flatten multiple levels to one level
+    #     flatten_str = ".".join([p for p in rel_path.parts]) + ".cache"
+    #     return PurePath(flatten_str)
+    #
+    # @classmethod
+    # def get_cache_cksum_rel_path(cls, file_path: Path, prj_root: Path) -> PurePath:
+    #     """
+    #     Gets the relative path (relative to cache_dir) of the cache checksum file.
+    #     """
+    #     rel_path = file_path.relative_to(prj_root)
+    #     # Flatten multiple levels to one level
+    #     flatten_str = ".".join([p for p in rel_path.parts]) + ".cksum"
+    #     return PurePath(flatten_str)

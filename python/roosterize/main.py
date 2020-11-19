@@ -68,15 +68,15 @@ def train_model(**options):
     model_spec = ModelSpec.build_from_dict(options)
 
     # Get the ML model
-    model = MLModels.get_model(model_spec)
+    model = MLModels.get_model(model_dir, model_spec)
 
     # Process data
     model.process_data(train_data_dir, output_dir/"train-processed-data", is_train=True)
     model.process_data(val_data_dir, output_dir/"val-processed-data")
 
     # Train & eval the ML model on val set
-    model.train(output_dir/"train-processed-data", output_dir/"val-processed-data", model_dir, force_retrain=force_retrain)
-    model.eval(output_dir/"val-processed-data", model_dir, output_dir/"val-eval-result")
+    model.train(output_dir/"train-processed-data", output_dir/"val-processed-data", force_retrain=force_retrain)
+    model.eval(output_dir/"val-processed-data", output_dir/"val-eval-result")
     return
 
 
@@ -90,14 +90,15 @@ def eval_model(**options):
 
     # Get the ML model
     model_spec = IOUtils.dejsonfy(IOUtils.load(model_dir/"spec.json", IOUtils.Format.json), ModelSpec)
-    model = MLModels.get_model(model_spec, is_eval=True)
+    model = MLModels.get_model(model_dir, model_spec, is_eval=True)
 
     # Process data
     model.process_data(data_dir, output_dir/"eval-processed-data")
 
     # Eval
-    model.eval(output_dir/"eval-processed-data", model_dir, output_dir/"eval-result")
+    model.eval(output_dir/"eval-processed-data", output_dir/"eval-result")
     return
+
 
 def suggest_lemmas(**options):
     from roosterize.data.DataMiner import DataMiner
@@ -119,7 +120,7 @@ def suggest_lemmas(**options):
     # Get the ML model
     print(">>>>> Initializing model ...")
     model_spec = IOUtils.dejsonfy(IOUtils.load(model_dir/"spec.json", IOUtils.Format.json), ModelSpec)
-    model = MLModels.get_model(model_spec, is_eval=True)
+    model = MLModels.get_model(model_dir, model_spec, is_eval=True)
 
     # Process data
     print(">>>>> Processing data ...")
@@ -127,7 +128,7 @@ def suggest_lemmas(**options):
 
     # Eval
     print(">>>>> Applying model ...")
-    model.eval(output_dir/"eval-processed-data", model_dir, output_dir/"eval-result")
+    model.eval(output_dir/"eval-processed-data", output_dir/"eval-result")
 
     # Print suggestions
     print(">>>>> Suggestions:")

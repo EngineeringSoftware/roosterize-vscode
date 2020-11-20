@@ -6,7 +6,7 @@
     "publisher": "EngineeringSoftware",
     "repository": "https://github.com/EngineeringSoftware/roosterize-vscode",
     "engines": {
-        "vscode": "^1.34.0"
+        "vscode": "^1.51.0"
     },
     "categories": [
         "Other"
@@ -41,21 +41,21 @@
         ]
     },
     "scripts": {
-        "vscode:prepublish": "npm run compile",
+        "vscode:prepublish": "npm install && npm run compile",
         "compile": "tsc -p ./",
         "lint": "eslint . --ext .ts,.tsx",
         "watch": "tsc -watch -p ./"
     },
     "devDependencies": {
         "@types/node": "^12.12.0",
-        "@types/vscode": "^1.34.0",
+        "@types/vscode": "1.51.0",
         "@typescript-eslint/eslint-plugin": "^3.0.2",
         "@typescript-eslint/parser": "^3.0.2",
         "eslint": "^7.1.0",
         "typescript": "^4.0.2"
     },
     "dependencies": {
-        "vscode-languageclient": "6.1.3"
+        "vscode-languageclient": "^6.1.3"
     },
     "extensionDependencies": [
         "maximedenes.vscoq"

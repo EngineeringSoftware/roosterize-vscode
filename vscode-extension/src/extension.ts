@@ -49,24 +49,45 @@ function startLangServer(
     return new LanguageClient(command, serverOptions, getClientOptions());
 }
 
-function isStartedInDebugMode(): boolean {
-    return process.env.VSCODE_DEBUG_MODE == "true";
+function isStartedInStandaloneMode(): boolean {
+    return process.env.STANDALONE_SERVER == "true";
 }
 
-export function activate(context: vscode.ExtensionContext) {
-    if (isStartedInDebugMode()) {
+function restartClient(context: vscode.ExtensionContext) {
+    if (client) {
+        client.stop()
+    }
+
+    if (isStartedInStandaloneMode()) {
         // DEBUGGING: run server manually
-        console.log("roosterize is in debug mode");
+        console.log("roosterize server should be started manually (`roosterize vscode_server --tcp`)");
         client = startLangServerTCP(20145);
     } else {
         // Production: Start the server
-        const cwd = path.join(__dirname, "..", "..");
-        client = startLangServer("roosterize", ["vscode_server"], cwd);
+        const binPath = vscode.workspace.getConfiguration().get<string>("roosterize.binPath", "");
+        client = startLangServer(
+            binPath,
+            ["vscode_server"], 
+            path.join(binPath, ".."),
+        );
     }
 
     context.subscriptions.push(client.start());
 
     console.log('"roosterize" is now alive!');
+}
+
+export function activate(context: vscode.ExtensionContext) {
+    restartClient(context);
+
+    // Listen to binPath changes
+    vscode.workspace.onDidChangeConfiguration(
+        (e) => {
+            if (e.affectsConfiguration("roosterize.binPath")) {
+                restartClient(context);
+            }
+        }
+    );
 }
 
 export function deactivate(): Thenable<void> {

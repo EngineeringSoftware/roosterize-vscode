@@ -25,6 +25,19 @@
                 "command": "extension.roosterize.download_global_model",
                 "title": "Roosterize: Download Model"
             }
+        ],
+        "configuration":[
+            {
+                "title": "Roosterize",
+                "properties": {
+                    "roosterize.binPath": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Path to Roosterize executable.",
+                        "scope": "machine-overridable"
+                    }
+                }
+            }
         ]
     },
     "scripts": {

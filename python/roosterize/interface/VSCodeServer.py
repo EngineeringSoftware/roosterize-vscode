@@ -67,7 +67,7 @@ def download_global_model(ls: LanguageServer, *args):
 
 
 def start_server(**options):
-    tcp = Utils.get_option_as_boolean(options, "tcp", default=True)
+    tcp = Utils.get_option_as_boolean(options, "tcp", default=False)
     host = options.get("host", "127.0.0.1")
     port = options.get("port", 20145)  # Default port is for debugging
 
